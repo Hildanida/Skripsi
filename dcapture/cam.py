@@ -1,7 +1,9 @@
 import cv2 as cv
 import numpy as np
 import fire
-
+import random
+import os
+from pathlib import Path
 
 
 
@@ -41,10 +43,29 @@ def generate_window(frame_left, frame_right):
     
     
     return dual
-    
-    
-    
-    
+
+def generate_footer(frame_top, text_info="Status Information"):
+    flh, flw, fld = frame_top.shape
+    footer = bar_info(img_size=(flh, flw), text=text_info)
+    dual = np.concatenate((frame_top, footer), axis=0)
+
+    return dual
+
+
+def save_to_dir(dst, frame_left, frame_right):
+    rstr = str(random.random())[2:8]
+    base_path = Path(dst)
+    path = base_path.joinpath(f'take_{rstr}')
+    path.mkdir(exist_ok = True, parents=True)
+
+    left_path = path.joinpath('left_cam.jpg')
+    right_path = path.joinpath('right_cam.jpg')
+
+    cv.imwrite(str(left_path), frame_left)
+    cv.imwrite(str(right_path), frame_right)
+
+    return path, left_path, right_path
+
     
 
 def stereo_vision_run(cam_left, cam_right, target_dir):
@@ -55,6 +76,7 @@ def stereo_vision_run(cam_left, cam_right, target_dir):
         cam_right (_type_): _description_
         target_dir (_type_): _description_
     """
+    info_bar_text= f'Directory Saved Status: {target_dir}'
     # Create a VideoCapture object
     cap_left = cv.VideoCapture(cam_left)
     cap_right = cv.VideoCapture(cam_right)
@@ -70,12 +92,19 @@ def stereo_vision_run(cam_left, cam_right, target_dir):
         
         # window = np.concatenate((frame_left, frame_right), axis=1)
         window = generate_window(frame_left, frame_right)
-        
+
+        window = generate_footer(window, text_info=info_bar_text)
         
         if (ret_left == True) and (ret_right == True):
             cv.imshow('Frame', window)
             if cv.waitKey(25) & 0xFF == ord('q'):
                 break
+
+            if cv.waitKey(25) & 0xFF == ord('t'):
+                paths = save_to_dir(target_dir, frame_left, frame_right)
+                info_bar_text = f"Last Saved : {paths[0]}"
+
+                pass
         # Break the loop
         else:
             break
