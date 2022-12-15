@@ -6,8 +6,9 @@ from sklearn.preprocessing import normalize
 
 from dmeasure import utils
 
+chesspath = 'data/chessboard/'
 
-left_stereo_map, right_stereo_map = utils.distortion_calibration()
+left_stereo_map, right_stereo_map = utils.distortion_calibration(chesspath)
 stereo, stereo_left, stereo_right  = utils.stereo_builder()
 wls_filter = utils.wls_filter_builder(stereo)
 
@@ -39,6 +40,6 @@ while True:
 ##wb.save("data4.xlsx")
 
 # Release the Cameras
-CamR.release()
-CamL.release()
+cam_right.release()
+cam_left.release()
 cv2.destroyAllWindows()

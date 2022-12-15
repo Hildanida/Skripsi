@@ -3,13 +3,13 @@ import cv2
 from openpyxl import Workbook # Used for writing data into an Excel file
 from sklearn.preprocessing import normalize
 
-
+from pathlib import Path
 
 min_disp = 2
 num_disp = 130-min_disp
 kernel= np.ones((3,3),np.uint8)
 
-def coords_mouse_disp(disp, event, x, y, flags, param):
+def coords_mouse_disp(disp, event, x, y, flags):
     if event == cv2.EVENT_LBUTTONDBLCLK:
         #print x,y,disp[y,x],filteredImg[y,x]
         average=0
@@ -23,6 +23,8 @@ def coords_mouse_disp(disp, event, x, y, flags, param):
 
 
 def distortion_calibration(path):
+    
+    base_path = Path(path)
     # Termination criteria
     criteria =(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     criteria_stereo= (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -39,20 +41,23 @@ def distortion_calibration(path):
     # Start calibration from the camera
     print('Starting calibration for the 2 cameras... ')
     # Call all saved images
-    for i in range(0,67):   # Put the amount of pictures you have taken for the calibration inbetween range(0,?) wenn starting from the image number 0
+    for i in range(5,77):   # Put the amount of pictures you have taken for the calibration inbetween range(0,?) wenn starting from the image number 0
         t= str(i)
-        ChessImaR= cv2.imread('chessboard-R'+t+'.png',0)    # Right side
-        ChessImaL= cv2.imread('chessboard-L'+t+'.png',0)    # Left side
-        retR, cornersR = cv2.findChessboardCorners(ChessImaR,
+        right_path = str(base_path.joinpath('chessboard-R'+t+'.png'))
+        left_path = str(base_path.joinpath('chessboard-L'+t+'.png'))
+        
+        chess_img_right= cv2.imread(right_path,0)    # Right side
+        chess_img_left= cv2.imread(left_path,0)    # Left side
+        retR, corners_right = cv2.findChessboardCorners(chess_img_right,
                                                 (9,6),None)  # Define the number of chees corners we are looking for
-        retL, cornersL = cv2.findChessboardCorners(ChessImaL,
+        retL, corners_left = cv2.findChessboardCorners(chess_img_left,
                                                 (9,6),None)  # Left side
         if (True == retR) & (True == retL):
             objpoints.append(objp) 
-            cv2.cornerSubPix(ChessImaR,cornersR,(11,11),(-1,-1),criteria)
-            cv2.cornerSubPix(ChessImaL,cornersL,(11,11),(-1,-1),criteria)
-            imgpointsR.append(cornersR)
-            imgpointsL.append(cornersL)
+            cv2.cornerSubPix(chess_img_right,corners_right,(11,11),(-1,-1),criteria)
+            cv2.cornerSubPix(chess_img_left,corners_left,(11,11),(-1,-1),criteria)
+            imgpointsR.append(corners_right)
+            imgpointsL.append(corners_left)
 
 
 
@@ -60,16 +65,16 @@ def distortion_calibration(path):
     #   Right Side
     retR, mtxR, distR, rvecsR, tvecsR = cv2.calibrateCamera(objpoints,
                                                             imgpointsR,
-                                                            ChessImaR.shape[::-1],None,None)
-    hR,wR= ChessImaR.shape[:2]
+                                                            chess_img_right.shape[::-1],None,None)
+    hR,wR= chess_img_right.shape[:2]
     OmtxR, roiR= cv2.getOptimalNewCameraMatrix(mtxR,distR,
                                                     (wR,hR),1,(wR,hR))
 
     #   Left Side
     retL, mtxL, distL, rvecsL, tvecsL = cv2.calibrateCamera(objpoints,
                                                             imgpointsL,
-                                                            ChessImaL.shape[::-1],None,None)
-    hL,wL= ChessImaL.shape[:2]
+                                                            chess_img_left.shape[::-1],None,None)
+    hL,wL= chess_img_left.shape[:2]
     OmtxL, roiL= cv2.getOptimalNewCameraMatrix(mtxL,distL,(wL,hL),1,(wL,hL))
 
     print('Cameras Ready to use')
@@ -98,25 +103,27 @@ def distortion_calibration(path):
                                                             distL,
                                                             mtxR,
                                                             distR,
-                                                            ChessImaR.shape[::-1],
+                                                            chess_img_right.shape[::-1],
                                                             criteria = criteria_stereo,
                                                             flags = cv2.CALIB_FIX_INTRINSIC)
 
     # StereoRectify function
     rectify_scale = 0 # if 0 image croped, if 1 image nor croped
     RL, RR, PL, PR, Q, roiL, roiR= cv2.stereoRectify(MLS, dLS, MRS, dRS,
-                                                    ChessImaR.shape[::-1], R, T,
+                                                    chess_img_right.shape[::-1], R, T,
                                                     rectify_scale,(0,0))  # last paramater is alpha, if 0= croped, if 1= not croped
     # initUndistortRectifyMap function
-    Left_Stereo_Map= cv2.initUndistortRectifyMap(MLS, dLS, RL, PL,
-                                                ChessImaR.shape[::-1], cv2.CV_16SC2)   # cv2.CV_16SC2 this format enables us the programme to work faster
-    Right_Stereo_Map= cv2.initUndistortRectifyMap(MRS, dRS, RR, PR,
-                                                ChessImaR.shape[::-1], cv2.CV_16SC2)
+    left_stereo_map = cv2.initUndistortRectifyMap(MLS, dLS, RL, PL,
+                                                  chess_img_right.shape[::-1], 
+                                                  cv2.CV_16SC2)   # cv2.CV_16SC2 this format enables us the programme to work faster
+    right_stereo_map = cv2.initUndistortRectifyMap(MRS, dRS, RR, PR,
+                                                   chess_img_right.shape[::-1], 
+                                                   cv2.CV_16SC2)
     
-    return Left_Stereo_Map, Right_Stereo_Map
+    return left_stereo_map, right_stereo_map
 
 
-def stereo_builder(window_size = 3., min_disp = 2):
+def stereo_builder(window_size = 3, min_disp = 2):
     num_disp = 130-min_disp
     stereo = cv2.StereoSGBM_create(minDisparity = min_disp,
         numDisparities = num_disp,

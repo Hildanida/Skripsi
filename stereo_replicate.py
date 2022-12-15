@@ -9,15 +9,15 @@ from sklearn.preprocessing import normalize
 
 from dmeasure import utils
 
-
-left_stereo_map, right_stereo_map = utils.distortion_calibration()
+chesspath = 'data/chessboard/'
+left_stereo_map, right_stereo_map = utils.distortion_calibration(chesspath)
 stereo, stereo_left, stereo_right  = utils.stereo_builder()
 wls_filter = utils.wls_filter_builder(stereo)
 
 
 # Call the two cameras
 cam_right = cv2.VideoCapture(0)   # Wenn 0 then Right Cam and wenn 2 Left Cam
-cam_left = cv2.VideoCapture(3)
+cam_left = cv2.VideoCapture(4)
 
 while True:
     # Start Reading Camera images
@@ -42,6 +42,10 @@ while True:
 ##wb.save("data4.xlsx")
 
 # Release the Cameras
-CamR.release()
-CamL.release()
+cam_right.release()
+cam_left.release()
 cv2.destroyAllWindows()
+
+
+# cam_right = cv2.VideoCapture(4)   # Wenn 0 then Right Cam and wenn 2 Left Cam
+# cam_left = cv2.VideoCapture(6)
